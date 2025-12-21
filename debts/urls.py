@@ -1,7 +1,12 @@
+from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import DebtViewSet
 
 router = DefaultRouter()
-router.register(r'debts', DebtViewSet, basename='debt')
+router.register(r'', DebtViewSet, basename='debt')
 
-urlpatterns = router.urls
+app_name = 'debt'
+
+urlpatterns = [
+    path('', include(router.urls)),
+]
