@@ -1,0 +1,58 @@
+### =========================
+### CREATE (POST)
+### =========================
+POST http://127.0.0.1:8000/api/clients/
+Content-Type: application/json
+
+{
+  "name": "Gashagaza Brenda",
+    "phone": "0789643588",
+    "address": "Muhanga"
+}
+
+###
+
+### =========================
+### READ ALL (GET)
+### =========================
+GET http://127.0.0.1:8000/api/clients/
+
+###
+
+### =========================
+### READ ONE (GET by ID)
+### =========================
+GET http://127.0.0.1:8000/api/clients/4/
+
+###
+
+### =========================
+### UPDATE (PUT)
+### =========================
+PUT http://127.0.0.1:8000/api/items/1/
+Content-Type: application/json
+
+{
+  "name": "Updated Item",
+  "description": "Updated description",
+  "price": 150
+}
+
+###
+
+### =========================
+### PARTIAL UPDATE (PATCH)
+### =========================
+PATCH http://127.0.0.1:8000/api/items/1/
+Content-Type: application/json
+
+{
+  "price": 200
+}
+
+###
+
+### =========================
+### DELETE
+### =========================
+DELETE http://127.0.0.1:8000/api/items/1/
