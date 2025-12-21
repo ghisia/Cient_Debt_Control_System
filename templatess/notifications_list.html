@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+
+{% block title %}Notifications - DebtControl{% endblock %}
+
+{% block content %}
+<div class="px-4 py-6 sm:px-0">
+    <!-- Page Header -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">
+                <i class="fas fa-bell"></i> Notifications
+            </h1>
+            <p class="mt-2 text-sm text-gray-600">
+                View and manage debt reminders and notifications
+            </p>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Total Notifications</p>
+                    <p class="text-3xl font-bold text-gray-900" id="totalNotifications">0</p>
+                </div>
+                <div class="bg-blue-100 p-3 rounded-lg">
+                    <i class="fas fa-bell text-blue-500 text-2xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Pending</p>
+                    <p class="text-3xl font-bold text-yellow-600" id="pendingNotifications">0</p>
+                </div>
+                <div class="bg-yellow-100 p-3 rounded-lg">
+                    <i class="fas fa-clock text-yellow-500 text-2xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Sent</p>
+                    <p class="text-3xl font-bold text-green-600" id="sentNotifications">0</p>
+                </div>
+                <div class="bg-green-100 p-3 rounded-lg">
+                    <i class="fas fa-check-circle text-green-500 text-2xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notifications Table -->
+    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-semibold text-gray-900">All Notifications</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scheduled</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sent</th>
+                    </tr>
+                </thead>
+                <tbody id="notificationsTableBody" class="bg-white divide-y divide-gray-200">
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                            <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
+                            <p>Loading notifications...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+let allNotifications = [];
+
+async function loadNotifications() {
+    try {
+        const response = await fetch('/api/notifications/', {
+            credentials: 'include'
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        allNotifications = Array.isArray(data) ? data : (data.results || []);
+        renderNotifications(allNotifications);
+        updateStatistics();
+    } catch (error) {
+        console.error('Error loading notifications:', error);
+        document.getElementById('notificationsTableBody').innerHTML = 
+            '<tr><td colspan="6" class="px-6 py-12 text-center text-red-500"><i class="fas fa-exclamation-triangle text-3xl mb-3"></i><p>Error loading notifications. Please try again.</p></td></tr>';
+        allNotifications = [];
+        updateStatistics();
+    }
+}
+
+function renderNotifications(notifications) {
+    const tbody = document.getElementById('notificationsTableBody');
+    
+    if (notifications.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-12 text-center text-gray-500"><i class="fas fa-inbox text-4xl mb-3"></i><p>No notifications found</p></td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = notifications.map(notification => {
+        const statusColors = {
+            'PENDING': 'bg-yellow-100 text-yellow-800',
+            'SENT': 'bg-green-100 text-green-800',
+            'FAILED': 'bg-red-100 text-red-800'
+        };
+        
+        const typeColors = {
+            'EMAIL': 'text-blue-600',
+            'SMS': 'text-green-600',
+            'PUSH': 'text-purple-600'
+        };
+        
+        const scheduledDate = notification.scheduled_at ? new Date(notification.scheduled_at).toLocaleString() : 'Not scheduled';
+        const sentDate = notification.sent_at ? new Date(notification.sent_at).toLocaleString() : '-';
+        
+        return `
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-medium text-gray-900">${notification.client_name || 'Unknown'}</div>
+                    <div class="text-sm text-gray-500">${notification.client_email || ''}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="text-sm font-semibold ${typeColors[notification.notification_type]}">
+                        <i class="fas fa-${notification.notification_type === 'EMAIL' ? 'envelope' : notification.notification_type === 'SMS' ? 'sms' : 'mobile'}"></i>
+                        ${notification.notification_type}
+                    </span>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="text-sm text-gray-900">${notification.message.substring(0, 80)}${notification.message.length > 80 ? '...' : ''}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full ${statusColors[notification.status]}">
+                        ${notification.status}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    ${scheduledDate}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    ${sentDate}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function updateStatistics() {
+    const total = allNotifications.length;
+    const pending = allNotifications.filter(n => n.status === 'PENDING').length;
+    const sent = allNotifications.filter(n => n.status === 'SENT').length;
+    
+    document.getElementById('totalNotifications').textContent = total;
+    document.getElementById('pendingNotifications').textContent = pending;
+    document.getElementById('sentNotifications').textContent = sent;
+}
+
+// Load notifications on page load
+document.addEventListener('DOMContentLoaded', () => {
+    loadNotifications();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,593 @@
+{% extends 'base.html' %}
+
+{% block title %}Payments - DebtControl{% endblock %}
+
+{% block extra_head %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    .select2-container--default .select2-selection--single {
+        height: 42px;
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 26px;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 40px;
+    }
+    .select2-dropdown {
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="px-4 py-6 sm:px-0">
+    <!-- Page Header -->
+    <div class="mb-6 flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">
+                <i class="fas fa-credit-card"></i> Payment Management
+            </h1>
+            <p class="mt-2 text-sm text-gray-600">
+                Track and manage all payment transactions
+            </p>
+        </div>
+        <button onclick="showAddPaymentModal()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium shadow-lg transition">
+            <i class="fas fa-plus mr-2"></i> Record Payment
+        </button>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-lg p-6 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-green-100 text-sm mb-2">Total Payments</p>
+                    <p class="text-3xl font-bold" id="totalPayments">0</p>
+                </div>
+                <div class="bg-green-400 bg-opacity-50 p-3 rounded-lg">
+                    <i class="fas fa-list text-2xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-blue-100 text-sm mb-2">Total Amount</p>
+                    <p class="text-3xl font-bold" id="totalAmount">0 FRw</p>
+                </div>
+                <div class="bg-blue-400 bg-opacity-50 p-3 rounded-lg">
+                    <i class="fas fa-money-bill-wave text-2xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-purple-100 text-sm mb-2">This Month</p>
+                    <p class="text-3xl font-bold" id="monthlyAmount">0 FRw</p>
+                </div>
+                <div class="bg-purple-400 bg-opacity-50 p-3 rounded-lg">
+                    <i class="fas fa-calendar-alt text-2xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-lg shadow-lg p-6 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-yellow-100 text-sm mb-2">This Week</p>
+                    <p class="text-3xl font-bold" id="weeklyAmount">0 FRw</p>
+                </div>
+                <div class="bg-yellow-400 bg-opacity-50 p-3 rounded-lg">
+                    <i class="fas fa-chart-line text-2xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Search Client</label>
+                <input type="text" id="searchInput" placeholder="Search by client name..." 
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
+                <select id="methodFilter" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                    <option value="">All Methods</option>
+                    <option value="CASH">Cash</option>
+                    <option value="BANK_TRANSFER">Bank Transfer</option>
+                    <option value="CHECK">Check</option>
+                    <option value="MOBILE_MONEY">Mobile Money</option>
+                    <option value="OTHER">Other</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Date From</label>
+                <input type="date" id="dateFrom" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Date To</label>
+                <input type="date" id="dateTo" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+            </div>
+            <div class="flex items-end">
+                <button onclick="applyFilters()" class="w-full bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg font-medium transition">
+                    <i class="fas fa-filter mr-2"></i> Apply
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payments Table -->
+    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Debt</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Method</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200" id="paymentsTableBody">
+                <tr>
+                    <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                        <i class="fas fa-spinner fa-spin mr-2"></i> Loading payments...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Payment Modal -->
+<div id="paymentModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-lg bg-white">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-2xl font-bold text-gray-900">Record New Payment</h3>
+            <button onclick="closePaymentModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+        
+        <form id="paymentForm" onsubmit="savePayment(event)">
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Client *</label>
+                <select id="clientId" required onchange="loadClientDebts()" 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                    <option value="">Select a client...</option>
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Debt *</label>
+                <select id="debtId" required onchange="updateRemainingBalance()"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                    <option value="">Select a debt...</option>
+                </select>
+                <p class="text-sm text-gray-500 mt-1">
+                    Remaining Balance: <span id="remainingBalance">0</span> FRw
+                </p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Amount *</label>
+                    <input type="number" id="amount" required step="0.01" min="0.01"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                           placeholder="0.00">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Payment Date *</label>
+                    <input type="date" id="paymentDate" required
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Payment Method *</label>
+                <select id="method" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                    <option value="CASH">Cash</option>
+                    <option value="BANK_TRANSFER">Bank Transfer</option>
+                    <option value="CHECK">Check</option>
+                    <option value="MOBILE_MONEY">Mobile Money</option>
+                    <option value="OTHER">Other</option>
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+                <textarea id="notes" rows="3"
+                          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                          placeholder="Optional payment notes..."></textarea>
+            </div>
+
+            <div class="flex justify-end space-x-4">
+                <button type="button" onclick="closePaymentModal()" 
+                        class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium transition">
+                    Cancel
+                </button>
+                <button type="submit" 
+                        class="px-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition">
+                    <i class="fas fa-save mr-2"></i> Save Payment
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+let allPayments = [];
+let allClients = [];
+let clientDebts = {};
+
+async function loadPayments() {
+    try {
+        const response = await fetch('/api/payments/', {
+            credentials: 'include'
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        allPayments = Array.isArray(data) ? data : (data.results || []);
+        renderPayments(allPayments);
+        updateStatistics();
+    } catch (error) {
+        console.error('Error loading payments:', error);
+        document.getElementById('paymentsTableBody').innerHTML = 
+            '<tr><td colspan="7" class="px-6 py-4 text-center text-red-500">Error loading payments. Please try again.</td></tr>';
+        // Initialize with empty array to prevent further errors
+        allPayments = [];
+        updateStatistics();
+    }
+}
+
+async function loadClients() {
+    try {
+        const response = await fetch('/api/clients/', {
+            credentials: 'include'
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        allClients = Array.isArray(data) ? data : (data.results || []);
+        console.log('Loaded clients:', allClients);
+    } catch (error) {
+        console.error('Error loading clients:', error);
+        allClients = [];
+    }
+}
+
+async function loadClientDebts() {
+    const clientId = $('#clientId').val();
+    if (!clientId) {
+        $('#debtId').empty().append('<option value="">Select a debt...</option>').trigger('change');
+        document.getElementById('remainingBalance').textContent = '0.00';
+        return;
+    }
+    
+    try {
+        // Fetch pending and overdue debts for the selected client
+        const response = await fetch(`/api/debts/?client=${clientId}`, {
+            credentials: 'include'
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        const allDebts = Array.isArray(data) ? data : (data.results || []);
+        
+        // Filter only PENDING and OVERDUE debts
+        const debts = allDebts.filter(debt => 
+            debt.status === 'PENDING' || debt.status === 'OVERDUE'
+        );
+        
+        clientDebts[clientId] = debts;
+        
+        const debtSelect = $('#debtId');
+        debtSelect.empty().append('<option value="">Select a debt...</option>');
+        
+        if (debts.length === 0) {
+            debtSelect.append('<option value="" disabled>No pending debts for this client</option>');
+        } else {
+            debts.forEach(debt => {
+                const remaining = parseFloat(debt.amount) - parseFloat(debt.paid || 0);
+                const option = new Option(
+                    `${debt.description.substring(0, 50)}... - ${remaining.toFixed(0)} FRw remaining`,
+                    debt.id,
+                    false,
+                    false
+                );
+                option.setAttribute('data-remaining', remaining);
+                debtSelect.append(option);
+            });
+        }
+        debtSelect.trigger('change');
+    } catch (error) {
+        console.error('Error loading client debts:', error);
+        $('#debtId').empty().append('<option value="">Error loading debts</option>');
+    }
+}
+
+function updateRemainingBalance() {
+    const debtSelect = document.getElementById('debtId');
+    const selectedOption = debtSelect.options[debtSelect.selectedIndex];
+    
+    if (selectedOption && selectedOption.dataset.remaining) {
+        const remaining = parseFloat(selectedOption.dataset.remaining);
+        document.getElementById('remainingBalance').textContent = remaining.toFixed(2);
+        document.getElementById('amount').max = remaining;
+        document.getElementById('amount').value = remaining.toFixed(2);
+    }
+}
+
+function renderPayments(payments) {
+    const tbody = document.getElementById('paymentsTableBody');
+    
+    if (payments.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-4 text-center text-gray-500">No payments found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = payments.map(payment => `
+        <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                ${new Date(payment.date).toLocaleDateString()}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-medium text-gray-900">${payment.client_name || 'Unknown'}</div>
+                <div class="text-sm text-gray-500">${payment.client_email || ''}</div>
+            </td>
+            <td class="px-6 py-4">
+                <div class="text-sm text-gray-900">${payment.debt_description ? payment.debt_description.substring(0, 40) + '...' : 'N/A'}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600">
+                ${parseFloat(payment.amount).toFixed(0)} FRw
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                    ${payment.method || 'N/A'}
+                </span>
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-500">
+                ${payment.notes || '-'}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                <a href="/debts/${payment.debt}/" class="text-primary hover:text-primary-dark" title="View Debt">
+                    <i class="fas fa-eye"></i>
+                </a>
+                <button onclick="deletePayment(${payment.id})" class="text-red-600 hover:text-red-900" title="Delete">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function updateStatistics() {
+    const total = allPayments.length;
+    const totalAmount = allPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+    
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const firstDayOfWeek = new Date(today);
+    firstDayOfWeek.setDate(today.getDate() - today.getDay());
+    
+    const monthlyPayments = allPayments.filter(p => new Date(p.date) >= firstDayOfMonth);
+    const weeklyPayments = allPayments.filter(p => new Date(p.date) >= firstDayOfWeek);
+    
+    const monthlyAmount = monthlyPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+    const weeklyAmount = weeklyPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+    
+    document.getElementById('totalPayments').textContent = total;
+    document.getElementById('totalAmount').textContent = `${totalAmount.toFixed(0)} FRw`;
+    document.getElementById('monthlyAmount').textContent = `${monthlyAmount.toFixed(0)} FRw`;
+    document.getElementById('weeklyAmount').textContent = `${weeklyAmount.toFixed(0)} FRw`;
+}
+
+function applyFilters() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const methodFilter = document.getElementById('methodFilter').value;
+    const dateFrom = document.getElementById('dateFrom').value;
+    const dateTo = document.getElementById('dateTo').value;
+    
+    let filtered = allPayments.filter(payment => {
+        const matchesSearch = !searchTerm || 
+            (payment.client_name && payment.client_name.toLowerCase().includes(searchTerm));
+        const matchesMethod = !methodFilter || payment.method === methodFilter;
+        
+        let matchesDate = true;
+        if (dateFrom) {
+            matchesDate = matchesDate && new Date(payment.date) >= new Date(dateFrom);
+        }
+        if (dateTo) {
+            matchesDate = matchesDate && new Date(payment.date) <= new Date(dateTo);
+        }
+        
+        return matchesSearch && matchesMethod && matchesDate;
+    });
+    
+    renderPayments(filtered);
+}
+
+async function showAddPaymentModal() {
+    document.getElementById('paymentForm').reset();
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('paymentDate').value = today;
+    document.getElementById('paymentDate').setAttribute('max', today);
+    document.getElementById('remainingBalance').textContent = '0';
+    
+    // Load clients if not already loaded
+    if (!allClients || allClients.length === 0) {
+        console.log('Loading clients for payment modal...');
+        await loadClients();
+    }
+    
+    console.log('Populating client dropdown with', allClients.length, 'clients');
+    
+    // Destroy existing Select2 instances
+    if ($('#clientId').hasClass('select2-hidden-accessible')) {
+        $('#clientId').select2('destroy');
+    }
+    if ($('#debtId').hasClass('select2-hidden-accessible')) {
+        $('#debtId').select2('destroy');
+    }
+    
+    // Repopulate client dropdown
+    const clientSelect = document.getElementById('clientId');
+    clientSelect.innerHTML = '<option value="">Select a client...</option>';
+    if (allClients && allClients.length > 0) {
+        allClients.forEach(client => {
+            const balance = (client.balance || 0).toFixed(0);
+            const option = document.createElement('option');
+            option.value = client.id;
+            option.textContent = `${client.name} - ${client.email} (Balance: ${balance} FRw)`;
+            clientSelect.appendChild(option);
+        });
+    } else {
+        console.warn('No clients available for payment');
+        const option = document.createElement('option');
+        option.value = '';
+        option.disabled = true;
+        option.textContent = 'No clients available. Please add clients first.';
+        clientSelect.appendChild(option);
+    }
+    
+    // Reset debt dropdown
+    const debtSelect = document.getElementById('debtId');
+    debtSelect.innerHTML = '<option value="">Select a debt...</option>';
+    
+    // Initialize Select2 with modal parent
+    $('#clientId').select2({
+        placeholder: 'Search and select a client...',
+        allowClear: true,
+        width: '100%',
+        dropdownParent: $('#paymentModal')
+    });
+    
+    $('#debtId').select2({
+        placeholder: 'Select a debt...',
+        allowClear: true,
+        width: '100%',
+        dropdownParent: $('#paymentModal')
+    });
+    
+    // Set up change event for client selection
+    $('#clientId').off('change').on('change', function() {
+        loadClientDebts();
+    });
+    
+    $('#debtId').off('change').on('change', function() {
+        updateRemainingBalance();
+    });
+    
+    document.getElementById('paymentModal').classList.remove('hidden');
+}
+
+function closePaymentModal() {
+    document.getElementById('paymentModal').classList.add('hidden');
+}
+
+async function savePayment(event) {
+    event.preventDefault();
+    
+    const data = {
+        debt: parseInt(document.getElementById('debtId').value),
+        amount: parseFloat(document.getElementById('amount').value),
+        date: document.getElementById('paymentDate').value,
+        method: document.getElementById('method').value,
+        notes: document.getElementById('notes').value
+    };
+    
+    try {
+        const response = await fetch('/api/payments/', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            closePaymentModal();
+            loadPayments();
+            alert('Payment recorded successfully!');
+        } else {
+            const error = await response.json();
+            alert('Error: ' + JSON.stringify(error));
+        }
+    } catch (error) {
+        console.error('Error saving payment:', error);
+        alert('Error saving payment');
+    }
+}
+
+async function deletePayment(paymentId) {
+    if (!confirm('Are you sure you want to delete this payment?')) return;
+    
+    try {
+        const response = await fetch(`/api/payments/${paymentId}/`, {
+            method: 'DELETE',
+            credentials: 'include',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+        
+        if (response.ok) {
+            loadPayments();
+            alert('Payment deleted successfully!');
+        }
+    } catch (error) {
+        console.error('Error deleting payment:', error);
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadPayments();
+    loadClients();
+});
+
+// Real-time filtering
+document.getElementById('searchInput').addEventListener('input', applyFilters);
+document.getElementById('methodFilter').addEventListener('change', applyFilters);
+document.getElementById('dateFrom').addEventListener('change', applyFilters);
+document.getElementById('dateTo').addEventListener('change', applyFilters);
+</script>
+{% endblock %}

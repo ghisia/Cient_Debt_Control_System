@@ -1,0 +1,340 @@
+{% extends 'base.html' %}
+
+{% block title %}Reports & Analytics - DebtControl{% endblock %}
+
+{% block content %}
+<div class="px-4 py-6 sm:px-0">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">
+            <i class="fas fa-chart-bar"></i> Reports & Analytics
+        </h1>
+        <p class="mt-2 text-sm text-gray-600">
+            Comprehensive insights into your debt collection performance
+        </p>
+    </div>
+
+    <!-- Financial Overview Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-blue-100 text-sm mb-2">Total Debt Issued</p>
+                    <p class="text-3xl font-bold" id="totalDebtIssued">0 FRw</p>
+                </div>
+                <div class="bg-blue-400 bg-opacity-50 p-3 rounded-lg">
+                    <i class="fas fa-file-invoice-dollar text-2xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-lg p-6 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-green-100 text-sm mb-2">Total Collected</p>
+                    <p class="text-3xl font-bold" id="totalCollected">0 FRw</p>
+                </div>
+                <div class="bg-green-400 bg-opacity-50 p-3 rounded-lg">
+                    <i class="fas fa-money-bill-wave text-2xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-lg shadow-lg p-6 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-red-100 text-sm mb-2">Outstanding Balance</p>
+                    <p class="text-3xl font-bold" id="outstandingBalance">0 FRw</p>
+                </div>
+                <div class="bg-red-400 bg-opacity-50 p-3 rounded-lg">
+                    <i class="fas fa-exclamation-triangle text-2xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-purple-100 text-sm mb-2">Collection Rate</p>
+                    <p class="text-3xl font-bold" id="collectionRate">0%</p>
+                </div>
+                <div class="bg-purple-400 bg-opacity-50 p-3 rounded-lg">
+                    <i class="fas fa-percentage text-2xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- Debt Status Chart -->
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                <i class="fas fa-chart-pie text-primary mr-2"></i> Debt Status Distribution
+            </h3>
+            <canvas id="debtStatusChart"></canvas>
+        </div>
+
+        <!-- Collection Progress Chart -->
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                <i class="fas fa-chart-bar text-primary mr-2"></i> Collection Progress
+            </h3>
+            <canvas id="collectionProgressChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Tables Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Outstanding Clients -->
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="px-6 py-4 bg-yellow-50 border-b border-yellow-200">
+                <h3 class="text-lg font-semibold text-gray-900">
+                    <i class="fas fa-users text-warning mr-2"></i> Top Outstanding Clients
+                </h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Balance</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Debts</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200" id="outstandingClientsTable">
+                        <tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Overdue Debts -->
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="px-6 py-4 bg-red-50 border-b border-red-200">
+                <h3 class="text-lg font-semibold text-gray-900">
+                    <i class="fas fa-exclamation-circle text-danger mr-2"></i> Overdue Debts
+                </h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Days</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200" id="overdueDebtsTable">
+                        <tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Buttons -->
+    <div class="mt-8 flex justify-center space-x-4">
+        <button onclick="exportToPDF()" class="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-medium shadow-lg transition">
+            <i class="fas fa-file-pdf mr-2"></i> Export to PDF
+        </button>
+        <button onclick="exportToExcel()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium shadow-lg transition">
+            <i class="fas fa-file-excel mr-2"></i> Export to Excel
+        </button>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let dashboardData = null;
+
+async function loadReportData() {
+    try {
+        // Load dashboard stats
+        const response = await fetch('/api/reports/dashboard/');
+        dashboardData = await response.json();
+        
+        updateFinancialCards(dashboardData);
+        createCharts(dashboardData);
+        
+        // Load outstanding clients
+        const outstandingResponse = await fetch('/api/reports/outstanding/');
+        const outstandingData = await outstandingResponse.json();
+        renderOutstandingClients(outstandingData.clients);
+        
+        // Load overdue debts
+        const overdueResponse = await fetch('/api/reports/overdue/');
+        const overdueData = await overdueResponse.json();
+        renderOverdueDebts(overdueData.debts);
+        
+    } catch (error) {
+        console.error('Error loading report data:', error);
+    }
+}
+
+function updateFinancialCards(data) {
+    document.getElementById('totalDebtIssued').textContent = `${data.debts.total_amount.toFixed(0)} FRw`;
+    document.getElementById('totalCollected').textContent = `${data.payments.total_amount.toFixed(0)} FRw`;
+    document.getElementById('outstandingBalance').textContent = `${data.financial.outstanding_balance.toFixed(0)} FRw`;
+    document.getElementById('collectionRate').textContent = `${data.financial.collection_rate.toFixed(1)}%`;
+}
+
+function createCharts(data) {
+    // Debt Status Pie Chart
+    const statusCtx = document.getElementById('debtStatusChart').getContext('2d');
+    new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Pending', 'Paid', 'Overdue'],
+            datasets: [{
+                data: [data.debts.pending, data.debts.paid, data.debts.overdue],
+                backgroundColor: ['#f59e0b', '#10b981', '#ef4444'],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+    
+    // Collection Progress Bar Chart
+    const progressCtx = document.getElementById('collectionProgressChart').getContext('2d');
+    new Chart(progressCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Total Debt', 'Collected', 'Outstanding'],
+            datasets: [{
+                label: 'Amount ($)',
+                data: [
+                    data.debts.total_amount,
+                    data.payments.total_amount,
+                    data.financial.outstanding_balance
+                ],
+                backgroundColor: ['#3b82f6', '#10b981', '#ef4444'],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value.toLocaleString();
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+}
+
+function renderOutstandingClients(clients) {
+    const tbody = document.getElementById('outstandingClientsTable');
+    
+    if (!clients || clients.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">No outstanding clients</td></tr>';
+        return;
+    }
+    
+    // Show top 10
+    const topClients = clients.slice(0, 10);
+    
+    tbody.innerHTML = topClients.map(client => `
+        <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4 text-sm">
+                <div class="font-medium text-gray-900">${client.name}</div>
+                <div class="text-gray-500">${client.email}</div>
+            </td>
+            <td class="px-6 py-4 text-sm font-semibold text-red-600">
+                ${client.balance.toFixed(0)} FRw
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-900">
+                <span class="text-yellow-600">${client.active_debts} active</span>
+                ${client.overdue_debts > 0 ? `<span class="text-red-600 ml-2">${client.overdue_debts} overdue</span>` : ''}
+            </td>
+        </tr>
+    `).join('');
+}
+
+function renderOverdueDebts(debts) {
+    const tbody = document.getElementById('overdueDebtsTable');
+    
+    if (!debts || debts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">No overdue debts</td></tr>';
+        return;
+    }
+    
+    // Show top 10
+    const topDebts = debts.slice(0, 10);
+    
+    tbody.innerHTML = topDebts.map(debt => `
+        <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4 text-sm">
+                <div class="font-medium text-gray-900">${debt.client_name}</div>
+                <div class="text-gray-500 text-xs">${debt.description.substring(0, 30)}...</div>
+            </td>
+            <td class="px-6 py-4 text-sm font-semibold text-red-600">
+                ${debt.remaining.toFixed(0)} FRw
+            </td>
+            <td class="px-6 py-4 text-sm">
+                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                    ${debt.days_overdue} days
+                </span>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function exportToPDF() {
+    alert('PDF Export: This feature would generate a PDF report using a library like jsPDF or html2pdf.js');
+    // Implementation would use jsPDF or similar library
+}
+
+function exportToExcel() {
+    if (!dashboardData) {
+        alert('Please wait for data to load');
+        return;
+    }
+    
+    // Simple CSV export (can be opened in Excel)
+    let csv = 'Type,Count,Amount\n';
+    csv += `Total Debts,${dashboardData.debts.total_count},${dashboardData.debts.total_amount}\n`;
+    csv += `Pending Debts,${dashboardData.debts.pending},-\n`;
+    csv += `Paid Debts,${dashboardData.debts.paid},-\n`;
+    csv += `Overdue Debts,${dashboardData.debts.overdue},-\n`;
+    csv += `Total Payments,${dashboardData.payments.total_count},${dashboardData.payments.total_amount}\n`;
+    csv += `Outstanding Balance,-,${dashboardData.financial.outstanding_balance}\n`;
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `debt_report_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+
+document.addEventListener('DOMContentLoaded', loadReportData);
+</script>
+{% endblock %}

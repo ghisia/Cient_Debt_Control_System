@@ -1,0 +1,554 @@
+{% extends 'base.html' %}
+
+{% block title %}Debts - DebtControl{% endblock %}
+
+{% block extra_head %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    .select2-container--default .select2-selection--single {
+        height: 42px;
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 26px;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 40px;
+    }
+    .select2-dropdown {
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="px-4 py-6 sm:px-0">
+    <!-- Page Header -->
+    <div class="mb-6 flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">
+                <i class="fas fa-file-invoice-dollar"></i> Debt Management
+            </h1>
+            <p class="mt-2 text-sm text-gray-600">
+                Manage and track all customer debts
+            </p>
+        </div>
+        <button onclick="showAddDebtModal()" class="bg-primary hover:bg-primary-dark text-white px-6 py-3 rounded-lg font-medium shadow-lg transition">
+            <i class="fas fa-plus mr-2"></i> Add New Debt
+        </button>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-blue-100 text-sm mb-2">Total Debts</p>
+                    <p class="text-3xl font-bold" id="totalDebts">0</p>
+                </div>
+                <div class="bg-blue-400 bg-opacity-50 p-3 rounded-lg">
+                    <i class="fas fa-file-invoice text-2xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-lg shadow-lg p-6 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-yellow-100 text-sm mb-2">Pending</p>
+                    <p class="text-3xl font-bold" id="pendingDebts">0</p>
+                </div>
+                <div class="bg-yellow-400 bg-opacity-50 p-3 rounded-lg">
+                    <i class="fas fa-clock text-2xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-lg shadow-lg p-6 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-red-100 text-sm mb-2">Overdue</p>
+                    <p class="text-3xl font-bold" id="overdueDebts">0</p>
+                </div>
+                <div class="bg-red-400 bg-opacity-50 p-3 rounded-lg">
+                    <i class="fas fa-exclamation-triangle text-2xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-lg p-6 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-green-100 text-sm mb-2">Paid</p>
+                    <p class="text-3xl font-bold" id="paidDebts">0</p>
+                </div>
+                <div class="bg-green-400 bg-opacity-50 p-3 rounded-lg">
+                    <i class="fas fa-check-circle text-2xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                <input type="text" id="searchInput" placeholder="Search by client or description..." 
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                <select id="statusFilter" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                    <option value="">All Status</option>
+                    <option value="PENDING">Pending</option>
+                    <option value="OVERDUE">Overdue</option>
+                    <option value="PAID">Paid</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
+                <select id="sortBy" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                    <option value="deadline">Deadline</option>
+                    <option value="amount">Amount</option>
+                    <option value="client">Client Name</option>
+                    <option value="created">Created Date</option>
+                </select>
+            </div>
+            <div class="flex items-end">
+                <button onclick="applyFilters()" class="w-full bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg font-medium transition">
+                    <i class="fas fa-filter mr-2"></i> Apply Filters
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Debts Table -->
+    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Paid</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remaining</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deadline</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200" id="debtsTableBody">
+                <tr>
+                    <td colspan="8" class="px-6 py-4 text-center text-gray-500">
+                        <i class="fas fa-spinner fa-spin mr-2"></i> Loading debts...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add/Edit Debt Modal -->
+<div id="debtModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-lg bg-white">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-2xl font-bold text-gray-900" id="modalTitle">Add New Debt</h3>
+            <button onclick="closeDebtModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+        
+        <form id="debtForm" onsubmit="saveDebt(event)">
+            <input type="hidden" id="debtId" value="">
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Client *</label>
+                <select id="clientId" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                    <option value="">Select a client...</option>
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Description *</label>
+                <textarea id="description" required rows="3" 
+                          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                          placeholder="Enter debt description..."></textarea>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Amount *</label>
+                    <input type="number" id="amount" required step="0.01" min="0.01"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                           placeholder="0.00">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Deadline *</label>
+                    <input type="date" id="deadline" required
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-4">
+                <button type="button" onclick="closeDebtModal()" 
+                        class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium transition">
+                    Cancel
+                </button>
+                <button type="submit" 
+                        class="px-6 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg font-medium transition">
+                    <i class="fas fa-save mr-2"></i> Save Debt
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+let allDebts = [];
+let allClients = [];
+
+async function loadDebts() {
+    try {
+        const response = await fetch('/api/debts/', {
+            credentials: 'include'
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        allDebts = Array.isArray(data) ? data : (data.results || []);
+        renderDebts(allDebts);
+        updateStatistics();
+    } catch (error) {
+        console.error('Error loading debts:', error);
+        document.getElementById('debtsTableBody').innerHTML = 
+            '<tr><td colspan="8" class="px-6 py-4 text-center text-red-500">Error loading debts. Please try again.</td></tr>';
+        allDebts = [];
+        updateStatistics();
+    }
+}
+
+async function loadClients() {
+    console.log('Fetching clients from /api/clients/...');
+    try {
+        const response = await fetch('/api/clients/', {
+            credentials: 'include'
+        });
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Response error:', errorText);
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log('Fetched data:', data);
+        allClients = Array.isArray(data) ? data : (data.results || []);
+        console.log('All clients set to:', allClients);
+    } catch (error) {
+        console.error('Error loading clients:', error);
+        allClients = [];
+    }
+}
+
+function renderDebts(debts) {
+    const tbody = document.getElementById('debtsTableBody');
+    
+    if (debts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="px-6 py-4 text-center text-gray-500">No debts found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = debts.map(debt => {
+        const statusColors = {
+            'PENDING': 'bg-yellow-100 text-yellow-800',
+            'OVERDUE': 'bg-red-100 text-red-800',
+            'PAID': 'bg-green-100 text-green-800'
+        };
+        
+        const remaining = parseFloat(debt.amount) - parseFloat(debt.paid || 0);
+        const deadlineDate = new Date(debt.deadline);
+        const today = new Date();
+        const daysUntil = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24));
+        
+        return `
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-medium text-gray-900">${debt.client_name || 'Unknown'}</div>
+                    <div class="text-sm text-gray-500">${debt.client_email || ''}</div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="text-sm text-gray-900">${debt.description.substring(0, 50)}${debt.description.length > 50 ? '...' : ''}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                    ${parseFloat(debt.amount).toFixed(0)} FRw
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">
+                    ${parseFloat(debt.paid || 0).toFixed(0)} FRw
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold ${remaining > 0 ? 'text-red-600' : 'text-green-600'}">
+                    ${remaining.toFixed(0)} FRw
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <div>${deadlineDate.toLocaleDateString()}</div>
+                    <div class="text-xs ${daysUntil < 0 ? 'text-red-600' : daysUntil <= 7 ? 'text-yellow-600' : 'text-gray-500'}">
+                        ${daysUntil < 0 ? `${Math.abs(daysUntil)} days overdue` : daysUntil === 0 ? 'Due today' : `${daysUntil} days left`}
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full ${statusColors[debt.status]}">
+                        ${debt.status}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                    <a href="/debts/${debt.id}/" class="text-primary hover:text-primary-dark" title="View Details">
+                        <i class="fas fa-eye"></i>
+                    </a>
+                    <button onclick="editDebt(${debt.id})" class="text-blue-600 hover:text-blue-900" title="Edit">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    ${debt.status === 'PENDING' ? `
+                    <button onclick="markAsPaid(${debt.id})" class="text-green-600 hover:text-green-900" title="Mark as Paid">
+                        <i class="fas fa-check-circle"></i>
+                    </button>` : ''}
+                    <button onclick="deleteDebt(${debt.id})" class="text-red-600 hover:text-red-900" title="Delete">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function updateStatistics() {
+    const total = allDebts.length;
+    const pending = allDebts.filter(d => d.status === 'PENDING').length;
+    const overdue = allDebts.filter(d => d.status === 'OVERDUE').length;
+    const paid = allDebts.filter(d => d.status === 'PAID').length;
+    
+    document.getElementById('totalDebts').textContent = total;
+    document.getElementById('pendingDebts').textContent = pending;
+    document.getElementById('overdueDebts').textContent = overdue;
+    document.getElementById('paidDebts').textContent = paid;
+}
+
+function applyFilters() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    const sortBy = document.getElementById('sortBy').value;
+    
+    let filtered = allDebts.filter(debt => {
+        const matchesSearch = !searchTerm || 
+            debt.description.toLowerCase().includes(searchTerm) ||
+            (debt.client_name && debt.client_name.toLowerCase().includes(searchTerm));
+        const matchesStatus = !statusFilter || debt.status === statusFilter;
+        
+        return matchesSearch && matchesStatus;
+    });
+    
+    // Sort
+    filtered.sort((a, b) => {
+        switch(sortBy) {
+            case 'amount': return parseFloat(b.amount) - parseFloat(a.amount);
+            case 'client': return (a.client_name || '').localeCompare(b.client_name || '');
+            case 'created': return new Date(b.created_at) - new Date(a.created_at);
+            default: return new Date(a.deadline) - new Date(b.deadline);
+        }
+    });
+    
+    renderDebts(filtered);
+}
+
+async function showAddDebtModal() {
+    document.getElementById('modalTitle').textContent = 'Add New Debt';
+    document.getElementById('debtForm').reset();
+    document.getElementById('debtId').value = '';
+    
+    // Set minimum date to today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('deadline').setAttribute('min', today);
+    
+    // Load clients if not already loaded
+    if (!allClients || allClients.length === 0) {
+        console.log('Loading clients...');
+        await loadClients();
+    }
+    
+    console.log('All clients:', allClients);
+    
+    // Destroy and reinitialize Select2 to ensure it works in modal
+    if ($('#clientId').hasClass('select2-hidden-accessible')) {
+        $('#clientId').select2('destroy');
+    }
+    
+    // Repopulate client dropdown
+    const clientSelect = document.getElementById('clientId');
+    clientSelect.innerHTML = '<option value="">Select a client...</option>';
+    
+    if (allClients && allClients.length > 0) {
+        console.log(`Adding ${allClients.length} clients to dropdown`);
+        allClients.forEach(client => {
+            const option = document.createElement('option');
+            option.value = client.id;
+            option.textContent = `${client.name} - ${client.email}`;
+            clientSelect.appendChild(option);
+        });
+    } else {
+        console.warn('No clients available');
+        const option = document.createElement('option');
+        option.value = '';
+        option.disabled = true;
+        option.textContent = 'No clients available. Please add a client first.';
+        clientSelect.appendChild(option);
+    }
+    
+    console.log('Client dropdown HTML:', clientSelect.innerHTML);
+    
+    // Initialize Select2 with modal parent
+    $('#clientId').select2({
+        placeholder: 'Search and select a client...',
+        allowClear: true,
+        width: '100%',
+        dropdownParent: $('#debtModal')
+    });
+    
+    console.log('Select2 initialized');
+    
+    document.getElementById('debtModal').classList.remove('hidden');
+}
+
+function closeDebtModal() {
+    document.getElementById('debtModal').classList.add('hidden');
+}
+
+async function editDebt(debtId) {
+    const debt = allDebts.find(d => d.id === debtId);
+    if (!debt) return;
+    
+    document.getElementById('modalTitle').textContent = 'Edit Debt';
+    document.getElementById('debtId').value = debt.id;
+    document.getElementById('clientId').value = debt.client;
+    document.getElementById('description').value = debt.description;
+    document.getElementById('amount').value = debt.amount;
+    document.getElementById('deadline').value = debt.deadline;
+    
+    document.getElementById('debtModal').classList.remove('hidden');
+}
+
+async function saveDebt(event) {
+    event.preventDefault();
+    
+    const debtId = document.getElementById('debtId').value;
+    const data = {
+        client: parseInt(document.getElementById('clientId').value),
+        description: document.getElementById('description').value,
+        amount: parseFloat(document.getElementById('amount').value),
+        deadline: document.getElementById('deadline').value
+    };
+    
+    try {
+        const url = debtId ? `/api/debts/${debtId}/` : '/api/debts/';
+        const method = debtId ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            closeDebtModal();
+            loadDebts();
+            alert(debtId ? 'Debt updated successfully!' : 'Debt added successfully!');
+        } else {
+            const error = await response.json();
+            alert('Error: ' + JSON.stringify(error));
+        }
+    } catch (error) {
+        console.error('Error saving debt:', error);
+        alert('Error saving debt');
+    }
+}
+
+async function markAsPaid(debtId) {
+    if (!confirm('Mark this debt as fully paid?')) return;
+    
+    try {
+        const response = await fetch(`/api/debts/${debtId}/mark_paid/`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+        
+        if (response.ok) {
+            loadDebts();
+            alert('Debt marked as paid!');
+        }
+    } catch (error) {
+        console.error('Error marking debt as paid:', error);
+    }
+}
+
+async function deleteDebt(debtId) {
+    if (!confirm('Are you sure you want to delete this debt?')) return;
+    
+    try {
+        const response = await fetch(`/api/debts/${debtId}/`, {
+            method: 'DELETE',
+            credentials: 'include',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+        
+        if (response.ok) {
+            loadDebts();
+            alert('Debt deleted successfully!');
+        }
+    } catch (error) {
+        console.error('Error deleting debt:', error);
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadDebts();
+    loadClients();
+});
+
+// Real-time search
+document.getElementById('searchInput').addEventListener('input', applyFilters);
+document.getElementById('statusFilter').addEventListener('change', applyFilters);
+document.getElementById('sortBy').addEventListener('change', applyFilters);
+</script>
+{% endblock %}

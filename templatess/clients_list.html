@@ -1,0 +1,471 @@
+{% extends 'base.html' %}
+
+{% block title %}Clients - DebtControl{% endblock %}
+
+{% block content %}
+<div class="px-4 py-6 sm:px-0">
+    <!-- Page Header -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">
+                <i class="fas fa-users"></i> Clients
+            </h1>
+            <p class="mt-2 text-sm text-gray-600">
+                Manage your client database and track their debts
+            </p>
+        </div>
+        <button onclick="showAddClientModal()" class="bg-primary hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium shadow-lg transition">
+            <i class="fas fa-plus mr-2"></i> Add New Client
+        </button>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                <input type="text" id="searchInput" placeholder="Search by name, email, or phone..." 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Filter by Status</label>
+                <select id="statusFilter" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary">
+                    <option value="">All Clients</option>
+                    <option value="with_debt">With Outstanding Debt</option>
+                    <option value="no_debt">No Debt</option>
+                    <option value="overdue">Has Overdue Debts</option>
+                </select>
+            </div>
+            <div class="flex items-end">
+                <button onclick="applyFilters()" class="w-full bg-gray-800 hover:bg-gray-900 text-white px-6 py-2 rounded-lg">
+                    <i class="fas fa-filter mr-2"></i> Apply Filters
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Total Clients</p>
+                    <p class="text-3xl font-bold text-gray-900" id="totalClientsCount">0</p>
+                </div>
+                <div class="bg-blue-100 p-3 rounded-lg">
+                    <i class="fas fa-users text-blue-500 text-2xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Clients with Debt</p>
+                    <p class="text-3xl font-bold text-gray-900" id="clientsWithDebt">0</p>
+                </div>
+                <div class="bg-yellow-100 p-3 rounded-lg">
+                    <i class="fas fa-exclamation-circle text-yellow-500 text-2xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Total Outstanding</p>
+                    <p class="text-3xl font-bold text-gray-900" id="totalOutstanding">0 FRw</p>
+                </div>
+                <div class="bg-red-100 p-3 rounded-lg">
+                    <i class="fas fa-dollar-sign text-red-500 text-2xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clients Table -->
+    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+        <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+            <h2 class="text-lg font-semibold text-gray-900">Client List</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Client
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Contact
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Total Debt
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Total Paid
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Balance
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200" id="clientsTableBody">
+                    <tr>
+                        <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+                            <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
+                            <p>Loading clients...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Client Modal -->
+<div id="clientModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-lg bg-white">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-2xl font-bold text-gray-900" id="modalTitle">Add New Client</h3>
+            <button onclick="closeClientModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+        
+        <form id="clientForm" onsubmit="saveClient(event)">
+            <input type="hidden" id="clientId" value="">
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+                <input type="text" id="clientName" required
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                       placeholder="Enter client full name">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+                    <input type="email" id="clientEmail" required
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                           placeholder="client@example.com">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                    <input type="tel" id="clientPhone"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                           placeholder="+1234567890">
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Address</label>
+                <textarea id="clientAddress" rows="2"
+                          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                          placeholder="Enter client address (optional)"></textarea>
+            </div>
+
+            <div class="mb-4" id="passwordField">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Password <span id="passwordRequired" class="text-red-600">*</span>
+                </label>
+                <input type="password" id="clientPassword"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                       placeholder="Enter password">
+                <p class="text-xs text-gray-500 mt-1" id="passwordHint">Required for new clients</p>
+            </div>
+
+            <div class="flex justify-end space-x-4">
+                <button type="button" onclick="closeClientModal()" 
+                        class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium transition">
+                    Cancel
+                </button>
+                <button type="submit" 
+                        class="px-6 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg font-medium transition">
+                    <i class="fas fa-save mr-2"></i> Save Client
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allClients = [];
+
+// Load all clients
+async function loadClients() {
+    try {
+        const response = await fetch('/api/clients/', {
+            credentials: 'include'
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        allClients = Array.isArray(data) ? data : (data.results || []);
+        renderClients(allClients);
+        updateStatistics(allClients);
+    } catch (error) {
+        console.error('Error loading clients:', error);
+        allClients = [];
+        document.getElementById('clientsTableBody').innerHTML = `
+            <tr>
+                <td colspan="7" class="px-6 py-12 text-center text-red-500">
+                    <i class="fas fa-exclamation-triangle text-3xl mb-3"></i>
+                    <p>Error loading clients. Please try again.</p>
+                </td>
+            </tr>
+        `;
+    }
+}
+
+// Render clients table
+function renderClients(clients) {
+    const tbody = document.getElementById('clientsTableBody');
+    
+    if (clients.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+                    <i class="fas fa-inbox text-4xl mb-3"></i>
+                    <p>No clients found</p>
+                    <button onclick="showAddClientModal()" class="text-primary hover:underline">Add your first client</button>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = clients.map(client => {
+        const balance = client.balance || 0;
+        const hasOverdue = client.has_overdue_debts || false;
+        const statusBadge = balance > 0 
+            ? (hasOverdue 
+                ? '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Overdue</span>'
+                : '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Active</span>')
+            : '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Paid</span>';
+        
+        return `
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 h-10 w-10">
+                            <div class="h-10 w-10 rounded-full bg-primary text-white flex items-center justify-center font-semibold">
+                                ${client.name.charAt(0).toUpperCase()}
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <div class="text-sm font-medium text-gray-900">${client.name}</div>
+                            <div class="text-sm text-gray-500">${client.email}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">
+                        <i class="fas fa-phone text-gray-400 mr-2"></i>${client.phone}
+                    </div>
+                    ${client.address ? `<div class="text-sm text-gray-500 mt-1"><i class="fas fa-map-marker-alt text-gray-400 mr-2"></i>${client.address}</div>` : ''}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    ${(client.total_debt || 0).toFixed(0)} FRw
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600">
+                    ${(client.total_paid || 0).toFixed(0)} FRw
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold ${balance > 0 ? 'text-red-600' : 'text-gray-900'}">
+                    ${balance.toFixed(0)} FRw
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    ${statusBadge}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <a href="/clients/${client.id}/" class="text-primary hover:text-blue-900 mr-3">
+                        <i class="fas fa-eye"></i> View
+                    </a>
+                    <button onclick="editClient(${client.id})" class="text-yellow-600 hover:text-yellow-900 mr-3">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button onclick="deleteClient(${client.id}, '${client.name}')" class="text-red-600 hover:text-red-900">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Update statistics
+function updateStatistics(clients) {
+    document.getElementById('totalClientsCount').textContent = clients.length;
+    
+    const clientsWithDebt = clients.filter(c => (c.balance || 0) > 0).length;
+    document.getElementById('clientsWithDebt').textContent = clientsWithDebt;
+    
+    const totalOutstanding = clients.reduce((sum, c) => sum + (c.balance || 0), 0);
+    document.getElementById('totalOutstanding').textContent = `${totalOutstanding.toFixed(0)} FRw`;
+}
+
+// Apply filters
+function applyFilters() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    
+    let filteredClients = allClients;
+    
+    // Apply search
+    if (searchTerm) {
+        filteredClients = filteredClients.filter(client => 
+            client.name.toLowerCase().includes(searchTerm) ||
+            client.email.toLowerCase().includes(searchTerm) ||
+            client.phone.includes(searchTerm)
+        );
+    }
+    
+    // Apply status filter
+    if (statusFilter === 'with_debt') {
+        filteredClients = filteredClients.filter(c => (c.balance || 0) > 0);
+    } else if (statusFilter === 'no_debt') {
+        filteredClients = filteredClients.filter(c => (c.balance || 0) === 0);
+    } else if (statusFilter === 'overdue') {
+        filteredClients = filteredClients.filter(c => c.has_overdue_debts);
+    }
+    
+    renderClients(filteredClients);
+}
+
+// Delete client
+async function deleteClient(id, name) {
+    if (!confirm(`Are you sure you want to delete "${name}"? This will also delete all their debts and payments.`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/clients/${id}/`, {
+            method: 'DELETE',
+            credentials: 'include',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+        
+        if (response.ok) {
+            alert('Client deleted successfully!');
+            loadClients();
+        } else {
+            alert('Error deleting client. Please try again.');
+        }
+    } catch (error) {
+        console.error('Error deleting client:', error);
+        alert('Error deleting client. Please try again.');
+    }
+}
+
+// Get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Modal functions
+function showAddClientModal() {
+    document.getElementById('modalTitle').textContent = 'Add New Client';
+    document.getElementById('clientForm').reset();
+    document.getElementById('clientId').value = '';
+    document.getElementById('passwordField').style.display = 'block';
+    document.getElementById('clientPassword').required = true;
+    document.getElementById('clientModal').classList.remove('hidden');
+}
+
+function closeClientModal() {
+    document.getElementById('clientModal').classList.add('hidden');
+}
+
+async function editClient(clientId) {
+    const client = allClients.find(c => c.id === clientId);
+    if (!client) return;
+    
+    document.getElementById('modalTitle').textContent = 'Edit Client';
+    document.getElementById('clientId').value = client.id;
+    document.getElementById('clientName').value = client.name;
+    document.getElementById('clientEmail').value = client.email;
+    document.getElementById('clientPhone').value = client.phone || '';
+    document.getElementById('clientAddress').value = client.address || '';
+    document.getElementById('passwordField').style.display = 'none';
+    document.getElementById('clientPassword').required = false;
+    document.getElementById('clientPassword').value = '';
+    
+    document.getElementById('clientModal').classList.remove('hidden');
+}
+
+async function saveClient(event) {
+    event.preventDefault();
+    
+    const clientId = document.getElementById('clientId').value;
+    const data = {
+        name: document.getElementById('clientName').value,
+        email: document.getElementById('clientEmail').value,
+        phone: document.getElementById('clientPhone').value,
+        address: document.getElementById('clientAddress').value
+    };
+    
+    // Add password for new clients
+    if (!clientId) {
+        data.password = document.getElementById('clientPassword').value;
+        if (!data.password) {
+            alert('Password is required for new clients');
+            return;
+        }
+    }
+    
+    try {
+        const url = clientId ? `/api/clients/${clientId}/` : '/api/clients/';
+        const method = clientId ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            closeClientModal();
+            loadClients();
+            alert(clientId ? 'Client updated successfully!' : 'Client added successfully!');
+        } else {
+            const error = await response.json();
+            alert('Error: ' + JSON.stringify(error));
+        }
+    } catch (error) {
+        console.error('Error saving client:', error);
+        alert('Error saving client');
+    }
+}
+
+// Search on input
+document.addEventListener('DOMContentLoaded', function() {
+    loadClients();
+    
+    document.getElementById('searchInput').addEventListener('input', applyFilters);
+});
+</script>
+{% endblock %}
